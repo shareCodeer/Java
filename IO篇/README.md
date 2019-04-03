@@ -153,6 +153,12 @@ FileDescriptor的成员变量
 
 ## 总结一下
 
+1: 调用open系统调用打开文件，得到文件描述符
+
+2: 保存得到的文件描述符到FileDescriptor#fd中
+
+### 问答
+
 + 何为文件描述符？
 
 答：操作系统使用文件描述符来指代一个打开的文件，对文件的读写等操作，都需要使用文件描述符作为参数， 本质上就是一个正整数
@@ -165,7 +171,25 @@ FileDescriptor的成员变量
 
 答：通过源码知道new 一个FileDescriptor 时是无法赋值的，其成员变量真正赋值发生在FileInputStream的open0本地方法中，即在JNI代码中使用open系统调用打开文件，得到文件描述符在JNI代码中设置到FileDescriptor的fd成员变量上
 
+---
 
+## 读取文件
 
+    // 从输入流中读取一个字节的数据，若还没又可用的输入，该方法会阻塞
+    public int read() throws IOException {
+            return read0();
+    }
     
+    // 本地方法 read0
+    private native int read0() throws IOException;
+    
+    /** 
+    * Reads up to b.length bytes of data from this input
+    * stream into an array of bytes. This method blocks until some input
+    * is available
+    */
+    // 读取b数组长度的字节数据从
+    public int read(byte b[]) throws IOException {
+            return readBytes(b, 0, b.length);
+    }
 
