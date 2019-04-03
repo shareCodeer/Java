@@ -72,7 +72,87 @@ Applications that need to define a subclass of **InputStream** must always provi
 
 > 从主机环境的文件系统中的文件读取字节，其用来读取原始字节流的，例如图像数据，若想读取字符流，请考虑使用FileReader
 
++ 属性
 
-    
+| 属性名 | 类型 | 描述 | 
+| ------ | ---- | ---- |
+| fd     | final FileDescriptor | 文件描述符，用于打开文件的句柄 |
+| path   | final String      | 引用文件的路径，如果使用文件描述符创建的输入流，则该字段为null |
+| channel | FileChannel | - | 
+| closeLock | final Object | 直接new了一个Object对象，表示关闭锁 |
+| closed | volatile boolean | 表示是否关闭状态，用volatile修饰，保证多线程可见性 |
+
++ 构造函数
+        
+        // 通过打开一个实际文件的连接，创建一个FileInputStream对象，实际的文件名就是文件系统中的path值
+        // 新new出来的FileDescriptor文件句柄对象就代表这个文件连接
+        public FileInputStream(String name) throws FileNotFoundException {
+            this(name != null ? new File(name) : null);
+        }
+        
+        
+        // 重载的构造函数
+        /**
+        * 1：checkRead():
+        * 如果有一个安全管理器，会去调用安全管理器的checkRead方法，参数就是实际文件的路径,主要是校验其read权限，即是否有读取的权限
+        * 2：isInvalid():
+        * 如果该文件名不存在，或者是一个目录而不是常规的文件，又或者一些其他的原因不能被打开读取，就会抛FileNotFoundException
+        * 
+        */
+        public FileInputStream(File file) throws FileNotFoundException {
+            String name = (file != null ? file.getPath() : null);
+            SecurityManager security = System.getSecurityManager();
+            if (security != null) {
+                security.checkRead(name);
+            }
+            if (name == null) {
+                throw new NullPointerException();
+            }
+            if (file.isInvalid()) {
+                throw new FileNotFoundException("Invalid file path");
+            }
+            fd = new FileDescriptor();
+            fd.attach(this);
+            path = name;
+            open(name);
+        }
+
+ 
++ 文件描述符[摘自木杉的博客](http://imushan.com/2018/05/29/java/language/JDK%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB-FileDescriptor/)
+
+
+> 操作系统使用文件描述符来指代一个打开的文件，对文件的读写等操作，都需要使用文件描述符作为参数，Java语言虽然使用了抽象程度更高的
+流来操作文件，但是底层仍然需要使用文件描述符与操作系统交互，在Java世界中与文件描述符对应的类就是FileDescriptor，这也就是为什么FileInputStream,FileOutStream类都有一个
+FileDescriptor的成员变量
+
+操作系统中的文件描述符本质上是一个非负整数，其中0， 1， 2已经固定为标准输入，标准输出，标准错误输出，所以程序中接下来打开的
+文件会使用当前进程中最小可用的文件描述符号码，比如3
+
+文件描述符本身就是一个整数，所以FileDescriptor的核心就是保存这个整数
+
+* FileDescriptor类
+
+        public final class FileDescriptor {
+            
+            // 成员变量
+            private int fd;
+            
+            // 无参构造，可见fd并不能通过new的时候指定
+            public /**/ FileDescriptor() {
+                fd = -1;
+                handle = -1;
+            }
+        }
+
+既然无法通过Java代码指定fd的值，那么fd是怎么赋值的呢？只能通过FileInputStream 寻找答案了
+
+在FileInputStream的构造函数中，我们看到new了一个FileDescriptor对象，
+并调用了fd的attach方法关联FileInputStream实例与FileDescriptor实例，这是为了日后关闭文件描述符做准备，可是在这里还是没有对fd作赋值操作啊
+
+实际上Java层面无法对FileDescriptor实例的fd属性赋值，真正的赋值逻辑是在FileInputStream#open0这个native方法中，这就要下载JDK的源码来看了
+
+
+
+
     
 
