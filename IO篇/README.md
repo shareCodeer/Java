@@ -149,8 +149,21 @@ FileDescriptor的成员变量
 在FileInputStream的构造函数中，我们看到new了一个FileDescriptor对象，
 并调用了fd的attach方法关联FileInputStream实例与FileDescriptor实例，这是为了日后关闭文件描述符做准备，可是在这里还是没有对fd作赋值操作啊
 
-实际上Java层面无法对FileDescriptor实例的fd属性赋值，真正的赋值逻辑是在FileInputStream#open0这个native方法中，这就要下载JDK的源码来看了
+实际上Java层面无法对FileDescriptor实例的fd属性赋值，真正的赋值逻辑是在FileInputStream#open0这个native方法中
 
+## 总结一下
+
++ 何为文件描述符？
+
+答：操作系统使用文件描述符来指代一个打开的文件，对文件的读写等操作，都需要使用文件描述符作为参数， 本质上就是一个正整数
+
++ Java流操作文件读取为何也需要文件描述符？
+
+答：Java语言虽然使用了抽象程度更高的流来操作文件，但是底层仍然需要使用文件描述符与操作系统交互，在Java世界中与文件描述符对应的类就是FileDescriptor
+
++ FileDescriptor文件描述符的成员变量何时初始化？
+
+答：通过源码知道new 一个FileDescriptor 时是无法赋值的，其成员变量真正赋值发生在FileInputStream的open0本地方法中，即在JNI代码中使用open系统调用打开文件，得到文件描述符在JNI代码中设置到FileDescriptor的fd成员变量上
 
 
 
